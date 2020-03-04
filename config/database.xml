@@ -49,6 +49,14 @@
 	<workloads>TPC-C</workloads>
 	<commands>redis</commands>
 </redis>
+<dynamodb>
+	<name>DynamoDB</name>
+	<description>DynamoDB</description>
+	<prefix>ddb</prefix>
+	<library>NONE</library>
+	<workloads>TPC-C</workloads>
+	<commands>XXXXX</commands>
+</dynamodb>
 <!--Trafodion deprecated, uncomment to enable as unsupported
 <trafodion>
 	<name>Trafodion</name>

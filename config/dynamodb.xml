@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ddb>
+    <connection>
+        <ddb_region>XXX</ddb_region>
+    </connection>
+	<tpcc>
+        <schema>
+            <ddb_table_prefix>XXX</ddb_table_prefix>
+        </schema>
+        <driver>
+            <ddb_count_ware>1</ddb_count_ware>
+            <ddb_total_iterations>1000000</ddb_total_iterations>
+            <ddb_raiseerror>false</ddb_raiseerror>
+            <ddb_keyandthink>false</ddb_keyandthink>
+	        <ddb_rampup>2</ddb_rampup>
+            <ddb_duration>5</ddb_duration>
+            <ddb_allwarehouse>false</ddb_allwarehouse>
+            <ddb_timeprofile>false</ddb_timeprofile>
+            <ddb_driver>test</ddb_driver>
+            <ddb_async_scale>false</ddb_async_scale>
+            <ddb_pg_async_client>10</ddb_pg_async_client>
+            <ddb_pg_async_verbose>false</ddb_pg_async_verbose>
+            <ddb_pg_async_delay>1000</ddb_pg_async_delay>
+        </driver>
+    </tpcc>
+</ddb>

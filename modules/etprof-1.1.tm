@@ -78,6 +78,7 @@ package provide etprof 1.1
 	if {![string match {::tcl*} $name]} {
 #add to list of elapsed times per name for 10 seconds
 		lappend ::etprof::pctiles($name) $elapsed
+        lappend ::etprof::cumpctiles($name) $cum_elapsed
 		if {[ expr $seconds % 10 ] eq 0 } {
 		if { $::etprof::iterations != $seconds } {
 		set ::etprof::iterations $seconds
@@ -182,6 +183,7 @@ package provide etprof 1.1
      set ::etprof::cumulative($name) 0
      set ::etprof::depth($name) 0
      set ::etprof::pctiles($name) 0
+     set ::etprof::cumpctiles($name) 0
  }
 
  proc ::etprof::init {} {
@@ -201,15 +203,15 @@ package provide etprof 1.1
      return
  }
 
- proc ::etprof::printInfoLine {name exTot exTotPerc callsNum avgExPerCall cumulTot {sep |}} {
+ proc ::etprof::printInfoLine {name exTot exTotPerc callsNum avgExPerCall cumulTot avgCumPerCall {sep |}} {
 set name2 [string trimleft $name "::" ]
-     puts [format "$sep%-17.17s$sep%14.14s$sep%6.6s$sep%8.8s$sep%14.14s$sep%14.14s$sep" \
-        $name2 $exTot $exTotPerc% $callsNum $avgExPerCall $cumulTot]
+     puts [format "$sep%-17.17s$sep%14.14s$sep%6.6s$sep%8.8s$sep%14.14s$sep%14.14s$sep%14.14s$sep" \
+        $name2 $exTot $exTotPerc% $callsNum $avgExPerCall $cumulTot $avgCumPerCall]
  }
 
  proc ::etprof::printInfoSeparator {} {
      set hline [string repeat - 30]
-     ::etprof::printInfoLine $hline $hline $hline $hline $hline $hline +
+     ::etprof::printInfoLine $hline $hline $hline $hline $hline $hline $hline +
  }
 
  proc ::etprof::percentage {part total} {
@@ -236,9 +238,9 @@ return $pctile
 }
 
 proc ::etprof::printPercentiles { seconds } {
-puts "|PERCENTILES [clock format [ expr $::etprof::timersecs + $seconds - 10 ] -format {%Y-%m-%d %H:%M:%S}] to [clock format [ expr $::etprof::timersecs + $seconds ] -format {%Y-%m-%d %H:%M:%S}]"
+#puts "|PERCENTILES [clock format [ expr $::etprof::timersecs + $seconds - 10 ] -format {%Y-%m-%d %H:%M:%S}] to [clock format [ expr $::etprof::timersecs + $seconds ] -format {%Y-%m-%d %H:%M:%S}]"
      foreach {key val} [array get ::etprof::exclusive] {
-if {[string match {::tcl*} $key]||[string match {::msgcat*} $key]||[string match {::etprof*} $key]} {
+if {[string match {::tcl*} $key]||[string match {::msgcat*} $key]||[string match {::etprof*} $key]||[string match {::rest*} $key]||[string match {::json*} $key]||[string match {::http*} $key]||[string match {::tls*} $key]} {
                 ;
         } else {
         lappend info [list $key $val]
@@ -249,19 +251,30 @@ if {[string match {::tcl*} $key]||[string match {::msgcat*} $key]||[string match
         foreach {name exclusiveTime} $i break
 unset -nocomplain sortedset
 set sortedset [ lsort -integer $::etprof::pctiles($name) ]
+set cumsortedset [ lsort -integer $::etprof::cumpctiles($name) ]
 set ::etprof::pctiles($name) 0
+set ::etprof::cumpctiles($name) 0
 set numvalues [ llength $sortedset ]
 if { $numvalues > 1 }  {
 set sortedset [ lreplace $sortedset 0 0 ]
+set cumsortedset [ lreplace $cumsortedset 0 0 ]
 set minv [ lindex $sortedset 0 ]
 set maxv [ lindex $sortedset end ]
 set p99 [ ::etprof::percentile $sortedset 0.99 ]
 set p95 [ ::etprof::percentile $sortedset 0.95 ]
 set p50 [ ::etprof::percentile $sortedset 0.50 ]
+set cminv [ lindex $cumsortedset 0 ]
+set cmaxv [ lindex $cumsortedset end ]
+set cp99 [ ::etprof::percentile $cumsortedset 0.99 ]
+set cp95 [ ::etprof::percentile $cumsortedset 0.95 ]
+set cp50 [ ::etprof::percentile $cumsortedset 0.50 ]
 set name2 [string trimleft $name "::" ]
-puts "|$name2|MIN-$minv|P50%-$p50|P95%-$p95|P99%-$p99|MAX-$maxv|SAMPLES-$numvalues"
+puts "{ 'timestamp': '[clock format [ expr $::etprof::timersecs + $seconds ] -format {%Y-%m-%d %H:%M:%S}]', 'module': '$name2', 'min': $minv, 'p50': $p50, 'p95': $p95, 'p99': $p99, 'max': $maxv, 'cmin': $cminv, 'cp50': $cp50, 'cp95': $cp95, 'cp99': $cp99, 'cmax': $cmaxv, 'samples': $numvalues }"
+#puts "|$name2|MIN-$minv|P50%-$p50|P95%-$p95|P99%-$p99|MAX-$maxv|SAMPLES-$numvalues"
 		}
+
 set ::etprof::pctiles($name) 0
+set ::etprof::cumpctiles($name) 0
 	}
      ::etprof::printInfoSeparator
  }
@@ -269,7 +282,7 @@ set ::etprof::pctiles($name) 0
  proc ::etprof::printLiveInfo {} {
      set info {}
      foreach {key val} [array get ::etprof::exclusive] {
-if {[string match {::tcl*} $key]||[string match {::msgcat*} $key]||[string match {::etprof*} $key]} {
+if {[string match {::tcl*} $key]||[string match {::msgcat*} $key]||[string match {::etprof*} $key]||[string match {::rest*} $key]||[string match {::json*} $key]||[string match {::http*} $key]||[string match {::tls*} $key]} {
                 ;
         } else {
         lappend info [list $key $val]
@@ -277,7 +290,7 @@ if {[string match {::tcl*} $key]||[string match {::msgcat*} $key]||[string match
      }
      set info [lsort -decreasing -index 1 -integer $info]
      ::etprof::printInfoSeparator
-     ::etprof::printInfoLine PROCNAME EXCLUSIVETOT {} CALLNUM AVGPERCALL CUMULTOT
+     ::etprof::printInfoLine PROCNAME EXCLUSIVETOT {} CALLNUM AVGPERCALL CUMULTOT AVGCUMPERCALL
      ::etprof::printInfoSeparator
      # Sum all the exclusive times to print infos in percentage
      set totalExclusiveTime 0
@@ -297,7 +310,16 @@ if {[string match {::tcl*} $key]||[string match {::msgcat*} $key]||[string match
         if {$::etprof::depth($name)} {
             set cumulativeTime "(*)$cumulativeTime"
         }
-        ::etprof::printInfoLine $name $exclusiveTime [::etprof::percentage $exclusiveTime $totalExclusiveTime] $calls $avgTimePerCall $cumulativeTime
+        if {[string is entier $cumulativeTime]} {
+            if {$calls} {
+                set avgCumTimePerCall [expr {int($cumulativeTime/$calls)}]
+            } else {
+                set avgCumTimePerCall 0
+            }
+        } else {
+            set avgCumTimePerCall "NOT AVAILABLE"
+        }
+        ::etprof::printInfoLine $name $exclusiveTime [::etprof::percentage $exclusiveTime $totalExclusiveTime] $calls $avgTimePerCall $cumulativeTime $avgCumTimePerCall
      }
      ::etprof::printInfoSeparator
  }
